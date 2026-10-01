@@ -67,11 +67,15 @@ async function fetchImageCid(tokenId) {
 const BaycImage = ({ tokenId, alt, style }) => {
   const [imageCid, setImageCid] = useState(() => imageCidByToken.get(String(tokenId)));
   const [gatewayIndex, setGatewayIndex] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
     setImageCid(imageCidByToken.get(String(tokenId)));
     setGatewayIndex(0);
+    setLoaded(false);
+    setFailed(false);
 
     fetchImageCid(tokenId)
       .then((cid) => {
@@ -86,27 +90,38 @@ const BaycImage = ({ tokenId, alt, style }) => {
     };
   }, [tokenId]);
 
-  if (!imageCid) {
+  if (!imageCid || failed) {
     return (
       <div
-        style={{ aspectRatio: "1 / 1", ...style }}
+        className="bayc-image-placeholder"
+        style={{ ...style }}
         role="img"
-        aria-label={`${alt} image unavailable`}
-      />
+        aria-label={failed ? `${alt} image unavailable` : `Loading ${alt}`}
+      >
+        <span>{failed ? "Image unavailable" : "Loading…"}</span>
+      </div>
     );
   }
 
   return (
-    <img
-      style={style}
-      alt={alt}
-      src={`${IMAGE_GATEWAYS[gatewayIndex]}/${imageCid}`}
-      onError={() => {
-        if (gatewayIndex < IMAGE_GATEWAYS.length - 1) {
-          setGatewayIndex((index) => index + 1);
-        }
-      }}
-    />
+    <div className="bayc-image-frame" style={style}>
+      {!loaded && <div className="bayc-image-placeholder"><span>Loading…</span></div>}
+      <img
+        className={loaded ? "bayc-image is-loaded" : "bayc-image"}
+        alt={alt}
+        loading="lazy"
+        src={`${IMAGE_GATEWAYS[gatewayIndex]}/${imageCid}`}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setLoaded(false);
+          if (gatewayIndex < IMAGE_GATEWAYS.length - 1) {
+            setGatewayIndex((index) => index + 1);
+          } else {
+            setFailed(true);
+          }
+        }}
+      />
+    </div>
   );
 };
 
