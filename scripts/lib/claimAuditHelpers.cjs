@@ -5,6 +5,48 @@ const Web3 = require("web3");
 
 const pageSize = 50;
 const web3 = new Web3();
+const multicall3Address = "0xcA11bde05977b3631167028862bE2a173976CA11";
+const multicallAggregateAbi = {
+  name: "aggregate",
+  type: "function",
+  inputs: [
+    {
+      name: "calls",
+      type: "tuple[]",
+      components: [
+        { name: "target", type: "address" },
+        { name: "callData", type: "bytes" },
+      ],
+    },
+  ],
+  outputs: [
+    { name: "blockNumber", type: "uint256" },
+    { name: "returnData", type: "bytes[]" },
+  ],
+};
+
+function loadProjectEnv() {
+  const envPath = path.resolve(__dirname, "../../.env");
+  if (!fs.existsSync(envPath)) return;
+
+  fs.readFileSync(envPath, "utf8")
+    .split(/\r?\n/)
+    .forEach((line) => {
+      const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!match) return;
+
+      const [, key, rawValue] = match;
+      if (process.env[key] !== undefined) return;
+
+      const value = rawValue
+        .replace(/^(["'])(.*)\1$/, "$2")
+        .replace(/\s+#.*$/, "");
+      process.env[key] = value;
+    });
+}
+
+// This runs only when an audit script is executed. It never logs env values.
+loadProjectEnv();
 
 const pause = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -68,18 +110,46 @@ const postJson = (url, body) =>
     request.end(payload);
   });
 
+async function postJsonWithRetry(url, body, label) {
+  let lastFailure;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      const response = await postJson(url, body);
+      const isComplete = Array.isArray(response)
+        ? response.every((item) => !item.error && item.result !== undefined)
+        : !response.error && response.result !== undefined;
+      if (isComplete) {
+        return response;
+      }
+      const errors = Array.isArray(response)
+        ? response.filter((item) => item.error).map((item) => item.error?.message).filter(Boolean)
+        : [response.error?.message].filter(Boolean);
+      lastFailure = new Error(errors.join("; ") || "RPC returned an incomplete batch");
+    } catch (error) {
+      lastFailure = error;
+    }
+
+    if (attempt < 5) {
+      const delay = attempt * 1000;
+      console.error(`${label}: RPC batch failed; retrying in ${delay / 1000}s (${attempt}/5)…`);
+      await pause(delay);
+    }
+  }
+  throw lastFailure;
+}
+
 function encodeUint256Call(signature, tokenId) {
   const selector = web3.utils.sha3(signature).slice(0, 10);
   return `${selector}${BigInt(tokenId).toString(16).padStart(64, "0")}`;
 }
 
-async function getBooleanStateByToken({ label, contractAddress, signature }) {
+async function getBooleanStateByToken({ label, contractAddress, signature, blockTag = "latest" }) {
   const rpcUrl = getRpcUrl();
   const tokenIds = Array.from({ length: 10000 }, (_, tokenId) => tokenId);
-  const batchSize = 100;
+  const batchSize = 250;
   const statePath = path.join(
     "/tmp",
-    `forgotten-apes-state-audit-${`${contractAddress}-${signature}`.replace(/[^a-z0-9]/gi, "")}.json`
+    `forgotten-apes-state-audit-${`${contractAddress}-${signature}-${blockTag}`.replace(/[^a-z0-9]/gi, "")}.json`
   );
   if (process.argv.includes("--reset") && fs.existsSync(statePath)) {
     fs.unlinkSync(statePath);
@@ -91,37 +161,150 @@ async function getBooleanStateByToken({ label, contractAddress, signature }) {
 
   console.error(
     checkpoint.offset
-      ? `${label}: resuming at batch ${checkpoint.offset / batchSize + 1}/100…`
-      : `${label}: starting 10,000 contract-state reads in 100 RPC batches…`
+      ? `${label}: resuming at token ID ${checkpoint.offset}/9,999…`
+      : `${label}: starting 10,000 contract-state reads through Multicall3…`
   );
   for (let offset = checkpoint.offset; offset < tokenIds.length; offset += batchSize) {
-    const batch = tokenIds.slice(offset, offset + batchSize).map((tokenId) => ({
-      jsonrpc: "2.0",
-      id: tokenId,
-      method: "eth_call",
-      params: [
-        {
-          to: contractAddress,
-          data: encodeUint256Call(signature, tokenId),
-        },
-        "latest",
-      ],
-    }));
-    const response = await postJson(rpcUrl, batch);
-    if (!Array.isArray(response) || response.some((item) => item.error || item.result === undefined)) {
-      throw new Error(`State-read batch ${offset / batchSize + 1} failed`);
-    }
-    response.forEach(({ id, result }) => {
-      if (BigInt(result) !== 0n) trueTokenIds.push(Number(id));
-    });
-    saveCheckpoint(statePath, { offset: offset + batchSize, trueTokenIds });
-    console.error(
-      `${label}: batch ${offset / batchSize + 1}/100 complete; ${trueTokenIds.length} claimed/minted IDs found`
+    const batchTokenIds = tokenIds.slice(offset, offset + batchSize);
+    const aggregateCallData = web3.eth.abi.encodeFunctionCall(
+      multicallAggregateAbi,
+      [
+        batchTokenIds.map((tokenId) => ({
+          target: contractAddress,
+          callData: encodeUint256Call(signature, tokenId),
+        })),
+      ]
     );
+    const response = await postJsonWithRetry(
+      rpcUrl,
+      {
+        jsonrpc: "2.0",
+        id: offset,
+        method: "eth_call",
+        params: [{ to: multicall3Address, data: aggregateCallData }, blockTag],
+      },
+      `${label}: token IDs ${offset}-${batchTokenIds.at(-1)}`
+    );
+    const decoded = web3.eth.abi.decodeParameters(
+      multicallAggregateAbi.outputs,
+      response.result
+    );
+    const returnData = decoded.returnData;
+    if (!Array.isArray(returnData) || returnData.length !== batchTokenIds.length) {
+      throw new Error(`Multicall returned an unexpected result length at token ID ${offset}`);
+    }
+    returnData.forEach((result, index) => {
+      if (BigInt(result) !== 0n) trueTokenIds.push(batchTokenIds[index]);
+    });
+    saveCheckpoint(statePath, {
+      offset: offset + batchTokenIds.length,
+      trueTokenIds,
+    });
+    console.error(
+      `${label}: IDs 0-${batchTokenIds.at(-1)} complete; ${trueTokenIds.length} positive contract states found`
+    );
+    await pause(150);
   }
 
   if (fs.existsSync(statePath)) fs.unlinkSync(statePath);
   return trueTokenIds;
+}
+
+async function getFirstTrueBooleanBlock({ label, contractAddress, signature, fromBlock }) {
+  const rpcUrl = getRpcUrl();
+  const data = web3.utils.sha3(signature).slice(0, 10);
+  const callAt = async (blockNumber) => {
+    const response = await postJsonWithRetry(
+      rpcUrl,
+      { jsonrpc: "2.0", id: blockNumber, method: "eth_call", params: [{ to: contractAddress, data }, `0x${blockNumber.toString(16)}`] },
+      `${label}: checking block ${blockNumber}`
+    );
+    return BigInt(response.result) !== 0n;
+  };
+  const latest = await postJsonWithRetry(
+    rpcUrl,
+    { jsonrpc: "2.0", id: 0, method: "eth_blockNumber", params: [] },
+    `${label}: reading latest block`
+  );
+  let low = fromBlock;
+  let high = Number(BigInt(latest.result));
+  if (await callAt(low)) return low;
+  if (!(await callAt(high))) throw new Error(`${label}: ${signature} is not true at the latest block`);
+  while (low + 1 < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (await callAt(middle)) high = middle;
+    else low = middle;
+  }
+  return high;
+}
+
+async function getAddressStateByToken({ label, contractAddress, signature, targetAddress }) {
+  const rpcUrl = getRpcUrl();
+  const tokenIds = Array.from({ length: 10000 }, (_, tokenId) => tokenId);
+  const batchSize = 250;
+  const normalizedTargetAddress = targetAddress.toLowerCase();
+  const statePath = path.join(
+    "/tmp",
+    `forgotten-apes-address-audit-${`${contractAddress}-${signature}-${targetAddress}`.replace(/[^a-z0-9]/gi, "")}.json`
+  );
+  if (process.argv.includes("--reset") && fs.existsSync(statePath)) {
+    fs.unlinkSync(statePath);
+  }
+  const checkpoint = fs.existsSync(statePath)
+    ? JSON.parse(fs.readFileSync(statePath, "utf8"))
+    : { offset: 0, matchingTokenIds: [] };
+  const matchingTokenIds = checkpoint.matchingTokenIds;
+
+  console.error(
+    checkpoint.offset
+      ? `${label}: resuming at token ID ${checkpoint.offset}/9,999…`
+      : `${label}: starting 10,000 ownership reads through Multicall3…`
+  );
+  for (let offset = checkpoint.offset; offset < tokenIds.length; offset += batchSize) {
+    const batchTokenIds = tokenIds.slice(offset, offset + batchSize);
+    const aggregateCallData = web3.eth.abi.encodeFunctionCall(
+      multicallAggregateAbi,
+      [
+        batchTokenIds.map((tokenId) => ({
+          target: contractAddress,
+          callData: encodeUint256Call(signature, tokenId),
+        })),
+      ]
+    );
+    const response = await postJsonWithRetry(
+      rpcUrl,
+      {
+        jsonrpc: "2.0",
+        id: offset,
+        method: "eth_call",
+        params: [{ to: multicall3Address, data: aggregateCallData }, "latest"],
+      },
+      `${label}: token IDs ${offset}-${batchTokenIds.at(-1)}`
+    );
+    const decoded = web3.eth.abi.decodeParameters(
+      multicallAggregateAbi.outputs,
+      response.result
+    );
+    const returnData = decoded.returnData;
+    if (!Array.isArray(returnData) || returnData.length !== batchTokenIds.length) {
+      throw new Error(`Multicall returned an unexpected result length at token ID ${offset}`);
+    }
+    returnData.forEach((result, index) => {
+      const owner = `0x${result.slice(-40)}`.toLowerCase();
+      if (owner === normalizedTargetAddress) matchingTokenIds.push(batchTokenIds[index]);
+    });
+    saveCheckpoint(statePath, {
+      offset: offset + batchTokenIds.length,
+      matchingTokenIds,
+    });
+    console.error(
+      `${label}: IDs 0-${batchTokenIds.at(-1)} complete; ${matchingTokenIds.length} burn-owned IDs found`
+    );
+    await pause(150);
+  }
+
+  if (fs.existsSync(statePath)) fs.unlinkSync(statePath);
+  return matchingTokenIds;
 }
 
 async function getFilteredLogsInRanges({ label, contractAddress, fromBlock, toBlock, topics }) {
@@ -131,16 +314,32 @@ async function getFilteredLogsInRanges({ label, contractAddress, fromBlock, toBl
   for (let start = fromBlock; start <= toBlock; start += rangeSize) {
     ranges.push([start, Math.min(start + rangeSize - 1, toBlock)]);
   }
-  const logs = [];
+  const statePath = path.join(
+    "/tmp",
+    `forgotten-apes-log-audit-${`${contractAddress}-${fromBlock}-${toBlock}-${topics.join("")}`.replace(/[^a-z0-9]/gi, "")}.json`
+  );
+  if (process.argv.includes("--reset") && fs.existsSync(statePath)) {
+    fs.unlinkSync(statePath);
+  }
+  const checkpoint = fs.existsSync(statePath)
+    ? JSON.parse(fs.readFileSync(statePath, "utf8"))
+    : { offset: 0, logs: [] };
+  const logs = checkpoint.logs;
 
-  console.error(`${label}: starting ${ranges.length} filtered log ranges…`);
-  for (let offset = 0; offset < ranges.length; offset += 10) {
-    const currentRanges = ranges.slice(offset, offset + 10);
-    const response = await postJson(
+  console.error(
+    checkpoint.offset
+      ? `${label}: resuming at range ${checkpoint.offset + 1}/${ranges.length}; ${logs.length} matching events already found…`
+      : `${label}: starting ${ranges.length} filtered log ranges…`
+  );
+  // Alchemy can reject JSON-RPC arrays containing eth_getLogs calls even when
+  // each individual range is valid. Send one modest range per request instead.
+  for (let offset = checkpoint.offset; offset < ranges.length; offset += 1) {
+    const [start, end] = ranges[offset];
+    const response = await postJsonWithRetry(
       rpcUrl,
-      currentRanges.map(([start, end], index) => ({
+      {
         jsonrpc: "2.0",
-        id: offset + index,
+        id: offset,
         method: "eth_getLogs",
         params: [
           {
@@ -150,17 +349,21 @@ async function getFilteredLogsInRanges({ label, contractAddress, fromBlock, toBl
             topics,
           },
         ],
-      }))
+      },
+      `${label}: range ${offset + 1}/${ranges.length}`
     );
-    if (!Array.isArray(response) || response.some((item) => item.error || !Array.isArray(item.result))) {
-      throw new Error(`Filtered log batch ${Math.floor(offset / 10) + 1} failed`);
+    if (!Array.isArray(response.result)) {
+      throw new Error(`Filtered log range ${offset + 1} returned an invalid result`);
     }
-    response.forEach(({ result }) => logs.push(...result));
+    logs.push(...response.result);
+    saveCheckpoint(statePath, { offset: offset + 1, logs });
     console.error(
-      `${label}: ranges ${offset + 1}-${offset + currentRanges.length}/${ranges.length} complete; ${logs.length} matching events found`
+      `${label}: range ${offset + 1}/${ranges.length} complete; ${logs.length} matching events found`
     );
+    await pause(100);
   }
 
+  if (fs.existsSync(statePath)) fs.unlinkSync(statePath);
   return logs;
 }
 
@@ -284,6 +487,8 @@ function printAudit(name, source, eventCount, ids) {
 
 module.exports = {
   getBooleanStateByToken,
+  getFirstTrueBooleanBlock,
+  getAddressStateByToken,
   getFilteredLogsInRanges,
   getAllTopicLogs,
   idsFromRangeExcept,

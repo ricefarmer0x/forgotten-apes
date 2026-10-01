@@ -17,7 +17,7 @@ async function main() {
 
   updateDataExport("unclaimedDogTokenIds", unclaimedDogTokenIds);
   console.error(
-    `BAKC dog audit: wrote ${unclaimedDogTokenIds.length} IDs to lostApesData.js`
+    `BAKC dog audit: derived and wrote ${unclaimedDogTokenIds.length} unminted dog IDs to lostApesData.js`
   );
   printAudit(
     "Unclaimed BAKC dog token IDs",

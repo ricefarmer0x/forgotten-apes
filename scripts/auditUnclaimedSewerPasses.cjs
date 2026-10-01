@@ -17,7 +17,7 @@ async function main() {
 
   updateDataExport("unclaimedSewerApes", unclaimedSewerApes);
   console.error(
-    `Sewer Pass audit: wrote ${unclaimedSewerApes.length} IDs to lostApesData.js`
+    `Sewer Pass audit: derived and wrote ${unclaimedSewerApes.length} unclaimed BAYC IDs to lostApesData.js`
   );
   printAudit(
     "Unclaimed BAYC Sewer Pass IDs",

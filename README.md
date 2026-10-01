@@ -95,13 +95,15 @@ node scripts/auditUnclaimedOtherside.cjs
 node scripts/auditUnclaimedSewerPasses.cjs
 ```
 
-The scripts require either `ETH_RPC_URL` or an exported
-`REACT_APP_ALCHEMY_API_KEY`; they never read `.env`. BAKC and Sewer use 100
-batched contract-state requests each. Otherside uses 27 batches of narrowly
-filtered mint logs. Each refresh is resumable after `Ctrl-C`; rerun the same
-command to continue, or add `--reset` to discard its temporary checkpoint.
-Review the terminal count and the resulting diff before committing the
-refreshed dataset.
+When executed, the scripts load the project-root `.env` without printing its
+values. An explicitly exported shell variable takes precedence. Set either
+`ETH_RPC_URL` or `REACT_APP_ALCHEMY_API_KEY`. BAKC and Sewer use direct
+contract-state reads through Multicall3 (about 40 RPC calls per audit).
+Otherside locates the contract's admin-sweep block, then reads the claim mapping
+at the immediately preceding historical block. Each refresh is resumable after
+`Ctrl-C`; rerun the same command to continue, or add `--reset` to discard its
+temporary checkpoint. Review the terminal count and resulting diff before
+committing the refreshed dataset.
 
 ### Supplemental labels
 
