@@ -7,10 +7,12 @@ import {
   SearchMain,
   SortMain,
 } from "./subcomponents/subcomponents";
-import { lostApesSnapshot } from "./data/lostApesData";
+import {
+  lostApesSnapshot,
+  lostApesSnapshotUpdatedAt,
+} from "./data/lostApesData";
 
 const { Content } = Layout;
-const SNAPSHOT_DATE = "October 1, 2026";
 
 const LostApes = () => {
   const [lostApes, setLostApes] = useState(() =>
@@ -34,7 +36,7 @@ const LostApes = () => {
             Otherside mint
           </li>
         </ul>
-        <p className="snapshot-note">*Updated up to {SNAPSHOT_DATE}</p>
+        <p className="snapshot-note">*Updated up to {lostApesSnapshotUpdatedAt}</p>
       </TitleMain>
       <SearchMain setSearchTerm={setSearchTerm} />
       <SortMain setUnclaimed={setLostApes} unclaimed={lostApes} />

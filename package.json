@@ -43,6 +43,7 @@
     "start": "react-app-rewired start",
     "build": "CI=false react-app-rewired build",
     "test": "react-app-rewired test",
+    "audit:lost-apes": "node scripts/auditLostApesSnapshot.cjs",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

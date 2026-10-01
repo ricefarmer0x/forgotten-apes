@@ -93,6 +93,7 @@ write the updated IDs back into `src/components/data/lostApesData.js`:
 node scripts/auditUnclaimedBakcDogs.cjs
 node scripts/auditUnclaimedOtherside.cjs
 node scripts/auditUnclaimedSewerPasses.cjs
+node scripts/auditLostApesSnapshot.cjs
 ```
 
 When executed, the scripts load the project-root `.env` without printing its
@@ -104,6 +105,13 @@ at the immediately preceding historical block. Each refresh is resumable after
 `Ctrl-C`; rerun the same command to continue, or add `--reset` to discard its
 temporary checkpoint. Review the terminal count and resulting diff before
 committing the refreshed dataset.
+
+`auditLostApesSnapshot.cjs` intersects the three preserved claim snapshots,
+resolves the current owners of only those candidate BAYC IDs, deduplicates the
+holder wallets, and compares each wallet nonce at block `14,680,891` with its
+latest nonce. It also includes the three independently confirmed burned BAYC
+IDs, then writes the derived `lostApesSnapshot` without assuming any fixed
+count. Use `--dry-run` to inspect without writing.
 
 ### Supplemental labels
 
