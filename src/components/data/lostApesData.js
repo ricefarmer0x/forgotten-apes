@@ -565,7 +565,8 @@ export const unclaimedApecoinApes = [
   2707, 8697,
 ];
 
-const lostApes67 = [
+// Local Lost Ape snapshot, last refreshed on October 1, 2026.
+export const lostApesSnapshot = [
   2862, 2707, 7180, 2703, 674, 2700, 4684, 2711, 2615, 7824, 6291, 3348, 2695,
   2372, 2179, 2080, 2326, 678, 2698, 3568, 8846, 8860, 9164, 4885, 9332, 3369,
   681, 697, 3884, 605, 8565, 2712, 699, 2681, 8798, 2714, 6747, 168, 2697, 4387,

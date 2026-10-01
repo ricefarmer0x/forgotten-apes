@@ -96,7 +96,14 @@ body {
 .ape-view-controls {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 14px;
+}
+.ape-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 4px;
 }
 .bayc-image-frame,
 .bayc-image-placeholder {
@@ -137,10 +144,22 @@ body {
 .apes-image-grid .bayc-image-frame {
   display: block;
 }
-.gallery-view { padding: 20px 0 0; }
-.gallery-view .ape-view-controls { padding: 0 20px; }
+.gallery-view { padding: 20px 20px 0; }
+.gallery-view .ape-view-controls { padding: 0; }
+.compact-view .ant-card-body {
+  padding: 6px;
+}
+.compact-view .ant-card-meta-title {
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+}
 .lost-apes-list {
   margin-bottom: 0 !important;
+}
+.snapshot-note {
+  margin-top: 10px;
+  font-size: 13px;
 }
 .lost-wallets {
   padding: 0 20px;

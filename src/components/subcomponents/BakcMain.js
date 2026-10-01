@@ -1,8 +1,8 @@
-import React, { useEffect } from "react";
-import { Row, Col, Card } from "antd";
-import LazyLoad from "react-lazyload";
-import { forceCheck } from "react-lazyload";
+import React, { useEffect, useState } from "react";
+import { Row, Col, Card, Pagination } from "antd";
 import { useGetBakcNftMetadataQuery } from "../../services/alchemyApi";
+
+const PAGE_SIZE = 24;
 
 const toGatewayUrl = (url) =>
   url?.replace(/^ipfs:\/\/(ipfs\/)?/, "https://ipfs2.seadn.io/ipfs/");
@@ -33,10 +33,13 @@ const BakcImage = ({ dog }) => {
 
 const BakcMain = (props) => {
   const { unclaimed } = props;
+  const [page, setPage] = useState(1);
+  const total = unclaimed?.length || 0;
+  const visibleDogs = unclaimed?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Lazy load on sorting function
+  // Keep Alchemy metadata lookups bounded to the currently visible page.
   useEffect(() => {
-    forceCheck();
+    setPage(1);
   }, [unclaimed]);
 
   return (
@@ -49,19 +52,16 @@ const BakcMain = (props) => {
         justify="start"
         align="middle"
       >
-        {unclaimed?.map((dog) => {
+        {visibleDogs?.map((dog) => {
           return (
             <Col key={dog} xs={12} sm={8} md={8} lg={6} xl={4}>
-              <LazyLoad height="100%" offset={100}>
-                {/* <Link to={`/dog/${dog}`}> */}
-                <a
-                  href={`https://opensea.io/assets/ethereum/0xba30e5f9bb24caa003e9f2f0497ad287fdf95623/${dog}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                   <Card
+              <a
+                href={`https://opensea.io/assets/ethereum/0xba30e5f9bb24caa003e9f2f0497ad287fdf95623/${dog}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Card
                   hoverable
-                  // loading={loading}
                   cover={
                     <BakcImage dog={dog} />
                   }
@@ -71,13 +71,24 @@ const BakcMain = (props) => {
                     title={dog.toString()}
                   />
                 </Card>
-                </a>
-                {/* </Link> */}
-              </LazyLoad>
+              </a>
             </Col>
           );
         })}
       </Row>
+      {total > PAGE_SIZE && (
+        <div className="ape-pagination">
+          <Pagination
+            current={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            showSizeChanger={false}
+            showQuickJumper
+            showTotal={(count, range) => `${range[0]}-${range[1]} of ${count}`}
+            onChange={setPage}
+          />
+        </div>
+      )}
     </div>
   );
 };

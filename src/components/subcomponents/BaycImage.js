@@ -4,6 +4,7 @@ const METADATA_CID = "QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq";
 const METADATA_GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs",
   "https://ipfs2.seadn.io/ipfs",
+  "https://dweb.link/ipfs",
 ];
 const IMAGE_GATEWAYS = [...METADATA_GATEWAYS];
 const SESSION_CACHE_KEY = "forgotten-apes:bayc-image-cids:v1";
@@ -64,7 +65,7 @@ async function fetchImageCid(tokenId) {
   return request;
 }
 
-const BaycImage = ({ tokenId, alt, style }) => {
+const BaycImage = ({ tokenId, alt, eager = false, style }) => {
   const [imageCid, setImageCid] = useState(() => imageCidByToken.get(String(tokenId)));
   const [gatewayIndex, setGatewayIndex] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -82,7 +83,7 @@ const BaycImage = ({ tokenId, alt, style }) => {
         if (active) setImageCid(cid);
       })
       .catch(() => {
-        if (active) setImageCid(null);
+        if (active) setFailed(true);
       });
 
     return () => {
@@ -109,7 +110,8 @@ const BaycImage = ({ tokenId, alt, style }) => {
       <img
         className={loaded ? "bayc-image is-loaded" : "bayc-image"}
         alt={alt}
-        loading="lazy"
+        crossOrigin="anonymous"
+        loading={eager ? "eager" : "lazy"}
         src={`${IMAGE_GATEWAYS[gatewayIndex]}/${imageCid}`}
         onLoad={() => setLoaded(true)}
         onError={() => {
