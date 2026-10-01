@@ -30,7 +30,7 @@ const Footers = () => {
       </div>
       <div className="footer-logos">
         <a
-          href="https://github.com/ricefarmernft"
+          href="https://github.com/ricefarmer0x"
           target="_blank"
           rel="noreferrer"
         >
