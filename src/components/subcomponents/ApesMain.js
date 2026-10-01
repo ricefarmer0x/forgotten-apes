@@ -3,6 +3,7 @@ import { Row, Col, Card } from "antd";
 import { Link } from "react-router-dom";
 import LazyLoad from "react-lazyload";
 import { forceCheck } from "react-lazyload";
+import BaycImage from "./BaycImage";
 
 const ApesMain = (props) => {
   const { unclaimed, loading } = props;
@@ -30,10 +31,10 @@ const ApesMain = (props) => {
                   hoverable
                   loading={loading}
                   cover={
-                    <img
+                    <BaycImage
                       style={{ width: "100%" }}
                       alt={`Bored Ape ${ape}`}
-                      src={`https://storage.googleapis.com/nftimagebucket/tokens/0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d/preview/${ape}.png`}
+                      tokenId={ape}
                     />
                   }
                 >

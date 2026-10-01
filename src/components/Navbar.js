@@ -7,40 +7,12 @@ const { Header } = Layout;
 const Navbar = () => {
   const items = [
     {
-      key: 0,
-      label: <Link to="/">Home</Link>,
-    },
-    {
       key: 1,
       label: <Link to="/lost-apes">Lost Apes</Link>,
     },
     {
-      key: 7,
-      label: <Link to="/unclaimed-sewer">Unclaimed Sewer</Link>,
-    },
-    {
-      key: 8,
-      label: <Link to="/bakc-unclaimed-sewer">Unclaimed Sewer (BAKC)</Link>,
-    },
-    {
-      key: 2,
-      label: <Link to="/unclaimed-ape">Unclaimed $APE</Link>,
-    },
-    {
-      key: 3,
-      label: <Link to="/unclaimed-dog">Unclaimed Dog</Link>,
-    },
-    {
-      key: 4,
-      label: <Link to="/unclaimed-otherside">Unclaimed Otherside</Link>,
-    },
-    {
       key: 5,
       label: <Link to="/burned-apes">Burned Apes</Link>,
-    },
-    {
-      key: 6,
-      label: <Link to="/no-transfers">No Transfers</Link>,
     },
   ];
 

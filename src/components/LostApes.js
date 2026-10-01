@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Layout } from "antd";
-import { useGetCurrentHoldersQuery } from "../services/alchemyApi";
+import { useGetOwnersForContractQuery } from "../services/alchemyApi";
 import {
   useGetApecoinApeQuery,
   useGetOthersideApeQuery,
@@ -22,19 +22,16 @@ import {
 } from "./subcomponents/subcomponents";
 import { setLostApesCount } from "../store/store";
 import { useDispatch, useSelector } from "react-redux";
-import { createAlchemyWeb3 } from "@alch/alchemy-web3";
+import { findInactiveAddresses } from "../services/alchemyRpc";
 import {
   unclaimedSewerApes,
   unclaimedOthersideApes,
   unclaimedApecoinApes,
 } from "./data/lostApesData";
 
-const web3 = new createAlchemyWeb3(
-  `https://eth-mainnet.g.alchemy.com/v2/${process.env.REACT_APP_ALCHEMY_API_KEY}`
-);
-
 const { Content } = Layout;
 const lastOthersideBlock = 14680891;
+const burnedApeIds = [4885, 5085, 8860];
 
 const LostApes = () => {
   const [loading, setLoading] = useState(true);
@@ -45,8 +42,8 @@ const LostApes = () => {
   const [matchingTokensAddresses, setMatchingTokensAddresses] = useState([]);
   const [inactiveAddresses, setInactiveAddresses] = useState([]);
 
-  const [lostApes, setLostApes] = useState(undefined);
-  const [lostApesTable, setLostApesTable] = useState();
+  const [lostApes, setLostApes] = useState([]);
+  const [lostApesTable, setLostApesTable] = useState([]);
 
   const [searchTerm, setSearchTerm] = useState();
   const [filteredApes, setFilteredApes] = useState();
@@ -62,43 +59,31 @@ const LostApes = () => {
         unclaimedOthersideApes,
         unclaimedSewerApes
       );
-      setMatchingApes(commonApes);
+      // A burned ape is permanently unavailable, so it is lost even when an
+      // old claim-list snapshot excluded it.
+      setMatchingApes([...new Set([...commonApes, ...burnedApeIds])]);
     }
   }, []);
 
   // Fetch current Ape holders
   const { data: currentHolders, error: currentError } =
-    useGetCurrentHoldersQuery();
+    useGetOwnersForContractQuery();
 
   // Find Owner Addresses
   useEffect(() => {
-    const tokenHex = [];
-    const hexBegin =
-      "0x000000000000000000000000000000000000000000000000000000000000";
-
-    matchingApes?.map((number) =>
-      tokenHex.push(
-        // Convert number to 4 digit hex
-        hexBegin + web3.utils.numberToHex(number).substring(2).padStart(4, "0")
-      )
-    );
-
+    const matchingApeIds = new Set(matchingApes?.map(String));
     const hexAddress = [];
     const hexTokenAddress = [];
     // Extract wallet addresses and token ID in each wallet address
-    currentHolders?.ownerAddresses?.map(({ ownerAddress, tokenBalances }) =>
-      tokenBalances.map(({ tokenId }) =>
-        tokenHex.filter((element) => {
-          if (tokenId?.includes(element)) {
-            // Push wallet addresses into an array
-            hexAddress.push(ownerAddress);
-            let token = web3.utils.hexToNumber(tokenId);
-            // Push wallet addresses and token ID into an array
-            hexTokenAddress.push({ token: token, address: ownerAddress });
-          }
-        })
-      )
-    );
+    currentHolders?.owners?.forEach(({ ownerAddress, tokenBalances = [] }) => {
+      tokenBalances.forEach(({ tokenId }) => {
+        const token = Number(tokenId);
+        if (matchingApeIds.has(String(token))) {
+          hexAddress.push(ownerAddress);
+          hexTokenAddress.push({ token, address: ownerAddress });
+        }
+      });
+    });
     setMatchingTokensAddresses(hexTokenAddress);
 
     // Remove duplicate wallet addresses
@@ -109,42 +94,26 @@ const LostApes = () => {
       }
     });
     setMatchingAddresses(uniqueHexAddress);
-  }, [matchingApes]);
+  }, [matchingApes, currentHolders]);
 
   // Find inactive wallet addresses
   useEffect(() => {
-    if (matchingAddresses) {
-      const inactiveAddressArr = [];
-      // Get transaction count for wallet addresses
-      const promises = matchingAddresses?.map((address) => {
-        const allTx = web3.eth.getTransactionCount(address).then();
+    let active = true;
 
-        const beforeTx = web3.eth
-          .getTransactionCount(address, lastOthersideBlock)
-          .then();
-        // Get transaction count for wallet addresses between lastOthersideBlock and most recent Block
-        async function getTransactionCount() {
-          try {
-            const allTxs = await allTx;
-            const beforeTxs = await beforeTx;
-            // If there are no recent transactions, add it to the inactiveAddressArr array
-            if (allTxs - beforeTxs === 0) {
-              inactiveAddressArr.push(address);
-            }
-          } catch (error) {
-            console.log("Error Finding Transaction Count");
-            // setPromiseError(true)
-          }
-        }
-
-        return getTransactionCount();
-      });
-
-      //   Set inactiveAddresses once all promises have returned
-      Promise.all(promises).then(() => {
-        setInactiveAddresses(inactiveAddressArr);
-      });
+    if (!matchingAddresses.length) {
+      setInactiveAddresses([]);
+      return undefined;
     }
+
+    findInactiveAddresses(matchingAddresses, lastOthersideBlock)
+      .then((addresses) => {
+        if (active) setInactiveAddresses(addresses);
+      })
+      .catch((error) => console.error("Error finding transaction counts", error));
+
+    return () => {
+      active = false;
+    };
   }, [matchingAddresses]);
 
   // Set Lost Apes
@@ -166,10 +135,8 @@ const LostApes = () => {
         lostApesArray.push(token);
       });
       // setTotalApes(lostApesArray.length);
-      if (lostApesArray.length > 0) {
-        setFilteredApes(lostApesArray);
-        setLostApes(getRandomApes(lostApesArray));
-      }
+      setFilteredApes(lostApesArray);
+      setLostApes(getRandomApes(lostApesArray));
       if (lostApesCount === 0) {
         dispatch(setLostApesCount(lostApesArray.length));
       }
@@ -179,7 +146,7 @@ const LostApes = () => {
   // Set loader to false
   useEffect(() => {
     console.log(lostApes);
-    if (lostApes?.length > 0) {
+    if (Array.isArray(lostApes)) {
       setLoading(false);
     }
   }, [lostApes]);

@@ -8,11 +8,11 @@ import {
 import { Link } from "react-router-dom";
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { ErrorMsg } from "./subcomponents/subcomponents";
-import { createAlchemyWeb3 } from "@alch/alchemy-web3";
+import { findInactiveAddresses } from "../services/alchemyRpc";
 
 import {
-  useGetCurrentHoldersQuery,
-  useGetPastHoldersQuery,
+  useGetOwnersForContractQuery,
+  useGetOwnersForContractAtBlockQuery,
 } from "../services/alchemyApi";
 import {
   useGetApecoinApeQuery,
@@ -30,15 +30,11 @@ import { useDispatch, useSelector } from "react-redux";
 const { Content } = Layout;
 const { Text } = Typography;
 
-const web3 = new createAlchemyWeb3(
-  `https://eth-mainnet.g.alchemy.com/v2/${process.env.REACT_APP_ALCHEMY_API_KEY}`
-);
-
 const lastOthersideBlock = 14680891;
 const lastApeBlock = 12347249;
 
 const Home = (props) => {
-  const [homeApes, setHomeApes] = useState();
+  const [homeApes, setHomeApes] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
@@ -54,10 +50,11 @@ const Home = (props) => {
   const [matchingTokensAddresses, setMatchingTokensAddresses] = useState([]);
   const [inactiveAddresses, setInactiveAddresses] = useState([]);
 
-  const [lostApes, setLostApes] = useState();
+  const [lostApes, setLostApes] = useState([]);
 
-  const { data: current, error: currentsError } = useGetCurrentHoldersQuery();
-  const { data: past, error: pastError } = useGetPastHoldersQuery(lastApeBlock);
+  const { data: current, error: currentsError } = useGetOwnersForContractQuery();
+  const { data: past, error: pastError } =
+    useGetOwnersForContractAtBlockQuery(lastApeBlock);
 
   const lostApesCount = useSelector((state) => state.lostApesCountSlice);
   const noTransfersCount = useSelector((state) => state.noTransfersCountSlice);
@@ -66,30 +63,21 @@ const Home = (props) => {
   // Find No Transfers Count
   useEffect(() => {
     if (current && past) {
-      // Find all ape wallets at the end of the BAYC mint
-      let pastArray = [];
-      const pastOwner = past?.ownerAddresses?.map(
-        ({ ownerAddress, tokenBalances }) =>
-          tokenBalances.map(({ tokenId }) =>
-            pastArray.push(ownerAddress + tokenId)
-          )
+      const ownerTokenKey = (ownerAddress, tokenId) =>
+        `${ownerAddress.toLowerCase()}:${tokenId}`;
+      const pastTokens = new Set(
+        past.owners.flatMap(({ ownerAddress, tokenBalances = [] }) =>
+          tokenBalances.map(({ tokenId }) => ownerTokenKey(ownerAddress, tokenId))
+        )
       );
-      // Find current ape wallets
-      let currentArray = [];
-      const currentOwner = current?.ownerAddresses?.map(
-        ({ ownerAddress, tokenBalances }) =>
-          tokenBalances.map(({ tokenId }) =>
-            currentArray.push(ownerAddress + tokenId)
-          )
-      );
-      // Match current and past ape wallets to see if they are the same
-      const matchingArray = currentArray.filter((value) =>
-        pastArray.includes(value)
+      const matchingArray = current.owners.flatMap(
+        ({ ownerAddress, tokenBalances = [] }) =>
+          tokenBalances
+            .filter(({ tokenId }) => pastTokens.has(ownerTokenKey(ownerAddress, tokenId)))
+            .map(({ tokenId }) => tokenId)
       );
       // If wallets match, then ape is still owned by original minter
-      const apeNumbers = matchingArray.map((array) =>
-        web3.utils.hexToNumber(array.substring(42))
-      );
+      const apeNumbers = matchingArray.map((tokenId) => Number(tokenId));
       if (noTransfersCount === 0) {
         dispatch(setNoTransfersCount(apeNumbers.length));
       }
@@ -129,37 +117,23 @@ const Home = (props) => {
   }, [unclaimedApes, unclaimedOtherside]);
   // Fetch current Ape holders
   const { data: currentHolders, error: currentError } =
-    useGetCurrentHoldersQuery();
+    useGetOwnersForContractQuery();
 
   //
   useEffect(() => {
-    const tokenHex = [];
-    const hexBegin =
-      "0x000000000000000000000000000000000000000000000000000000000000";
-
-    matchingApes?.map((number) =>
-      tokenHex.push(
-        // Convert number to 4 digit hex
-        hexBegin + web3.utils.numberToHex(number).substring(2).padStart(4, "0")
-      )
-    );
-
+    const matchingApeIds = new Set(matchingApes?.map(String));
     const hexAddress = [];
     const hexTokenAddress = [];
     // Extract wallet addresses and token ID in each wallet address
-    currentHolders?.ownerAddresses?.map(({ ownerAddress, tokenBalances }) =>
-      tokenBalances.map(({ tokenId }) =>
-        tokenHex.filter((element) => {
-          if (tokenId?.includes(element)) {
-            // Push wallet addresses into an array
-            hexAddress.push(ownerAddress);
-            let token = web3.utils.hexToNumber(tokenId);
-            // Push wallet addresses and token ID into an array
-            hexTokenAddress.push({ token: token, address: ownerAddress });
-          }
-        })
-      )
-    );
+    currentHolders?.owners?.forEach(({ ownerAddress, tokenBalances = [] }) => {
+      tokenBalances.forEach(({ tokenId }) => {
+        const token = Number(tokenId);
+        if (matchingApeIds.has(String(token))) {
+          hexAddress.push(ownerAddress);
+          hexTokenAddress.push({ token, address: ownerAddress });
+        }
+      });
+    });
     setMatchingTokensAddresses(hexTokenAddress);
 
     // Remove duplicate wallet addresses
@@ -170,35 +144,25 @@ const Home = (props) => {
       }
     });
     setMatchingAddresses(uniqueHexAddress);
-  }, [matchingApes]);
+  }, [matchingApes, currentHolders]);
 
   useEffect(() => {
-    if (matchingAddresses) {
-      const inactiveAddressArr = [];
-      // Get transaction count for wallet addresses
-      const promises = matchingAddresses?.map((address) => {
-        const allTx = web3.eth.getTransactionCount(address).then();
+    let active = true;
 
-        const beforeTx = web3.eth
-          .getTransactionCount(address, lastOthersideBlock)
-          .then();
-        // Get transaction count for wallet addresses between lastOthersideBlock and most recent Block
-        async function getTransactionCount() {
-          const allTxs = await allTx;
-          const beforeTxs = await beforeTx;
-          // If there are no recent transactions, add it to the inactiveAddressArr array
-          if (allTxs - beforeTxs === 0) {
-            inactiveAddressArr.push(address);
-          }
-        }
-
-        return getTransactionCount();
-      });
-      //   Set inactiveAddresses once all promises have returned
-      Promise.all(promises).then(() => {
-        setInactiveAddresses(inactiveAddressArr);
-      });
+    if (!matchingAddresses.length) {
+      setInactiveAddresses([]);
+      return undefined;
     }
+
+    findInactiveAddresses(matchingAddresses, lastOthersideBlock)
+      .then((addresses) => {
+        if (active) setInactiveAddresses(addresses);
+      })
+      .catch((error) => console.error("Error finding transaction counts", error));
+
+    return () => {
+      active = false;
+    };
   }, [matchingAddresses]);
 
   useEffect(() => {
@@ -219,9 +183,7 @@ const Home = (props) => {
       });
       // setFilteredApes(lostApesArray);
 
-      if (lostApesArray.length > 0) {
-        setLostApes(getRandomApes(lostApesArray));
-      }
+      setLostApes(getRandomApes(lostApesArray));
 
       if (lostApesCount === 0) {
         dispatch(setLostApesCount(lostApesArray.length));
@@ -237,31 +199,27 @@ const Home = (props) => {
 
   // Set loader to false
   useEffect(() => {
-    if (homeApes) {
+    if (Array.isArray(homeApes)) {
       setLoading(false);
     }
   }, [homeApes]);
 
-  // Set error message if there is an error
-  if (
+  const hasDataError =
     currentError ||
     apecoinError ||
     othersideError ||
     currentsError ||
-    pastError
-  )
-    return <ErrorMsg />;
+    pastError;
 
   return (
     <Content>
-      {loading ? (
+      <HomeStatistics />
+      {hasDataError ? (
+        <ErrorMsg />
+      ) : loading ? (
         <Loader></Loader>
       ) : (
         <>
-          <HomeStatistics
-            totalLostApes={lostApesCount}
-            totalNoTransfer={noTransfersCount}
-          />
           <div className="home-feature">
             <Text type="secondary" className="home-link">
               <Link to="/lost-apes">

@@ -3,9 +3,10 @@ import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { darkSelector } from "../store/store";
 import { Row, Col, Card, Layout, Button, ConfigProvider } from "antd";
-import { useGetMetadataQuery } from "../services/alchemyApi";
+import { useGetNftMetadataQuery } from "../services/alchemyApi";
 import { Loader, ErrorMsg } from "./subcomponents/subcomponents";
-import { useGetTokenHoldersQuery } from "../services/alchemyApi";
+import { useGetOwnersForNftQuery } from "../services/alchemyApi";
+import BaycImage from "./subcomponents/BaycImage";
 
 const { Content } = Layout;
 
@@ -18,15 +19,15 @@ const ApeDetails = () => {
     data: traits,
     isFetching: traitsFetching,
     error: traitsError,
-  } = useGetMetadataQuery(ape);
+  } = useGetNftMetadataQuery(ape);
 
-  const metadata = traits?.metadata?.attributes;
+  const metadata = traits?.raw?.metadata?.attributes;
 
   const {
     data: address,
     isFetching: addressFetching,
     error: addressError,
-  } = useGetTokenHoldersQuery(ape);
+  } = useGetOwnersForNftQuery(ape);
   const owner = address?.owners[0];
 
   if (traitsFetching || addressFetching) return <Loader />;
@@ -58,10 +59,10 @@ const ApeDetails = () => {
                   loading={false}
                   hoverable
                   cover={
-                    <img
+                    <BaycImage
                       style={{ width: "100%" }}
                       alt={`Bored Ape ${ape}`}
-                      src={`https://storage.googleapis.com/nftimagebucket/tokens/0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d/preview/${ape}.png`}
+                      tokenId={ape}
                     />
                   }
                 >

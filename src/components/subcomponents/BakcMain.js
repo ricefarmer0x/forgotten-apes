@@ -1,27 +1,38 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Row, Col, Card } from "antd";
-import { Link } from "react-router-dom";
 import LazyLoad from "react-lazyload";
 import { forceCheck } from "react-lazyload";
-import { useGetBakcQuery } from "../../services/alchemyApi";
+import { useGetBakcNftMetadataQuery } from "../../services/alchemyApi";
+
+const toGatewayUrl = (url) =>
+  url?.replace(/^ipfs:\/\/(ipfs\/)?/, "https://ipfs2.seadn.io/ipfs/");
+
+const BakcImage = ({ dog }) => {
+  const { data } = useGetBakcNftMetadataQuery(dog);
+  const imageUrl =
+    data?.image?.cachedUrl || data?.image?.originalUrl || data?.raw?.metadata?.image;
+
+  if (!imageUrl) {
+    return (
+      <div
+        style={{ width: "100%", aspectRatio: "1 / 1" }}
+        role="img"
+        aria-label={`Bored Ape Kennel Club ${dog} image unavailable`}
+      />
+    );
+  }
+
+  return (
+    <img
+      style={{ width: "100%" }}
+      alt={`Bored Ape Kennel Club ${dog}`}
+      src={toGatewayUrl(imageUrl)}
+    />
+  );
+};
 
 const BakcMain = (props) => {
   const { unclaimed } = props;
-
-  // Get BAKC image src
-  // const GetBakcImage = ({ dog }) => {
-  //   const { data } = useGetBakcQuery(dog);
-  //   const image = data?.media[0].gateway;
-  //   return (
-  //     <>
-  //       <img
-  //         style={{ width: "100%" }}
-  //         //   alt={`Bored Ape Kennel Club ${dog}`}
-  //         src={image}
-  //       />
-  //     </>
-  //   );
-  // };
 
   // Lazy load on sorting function
   useEffect(() => {
@@ -52,11 +63,7 @@ const BakcMain = (props) => {
                   hoverable
                   // loading={loading}
                   cover={
-                    <img
-                      style={{ width: "100%" }}
-                      alt={`Bored Ape Kennel Club ${dog}`}
-                      src={`https://img.x2y2.io/v2/1/0xba30e5f9bb24caa003e9f2f0497ad287fdf95623/${dog}/720/image.jpg`}
-                    />
+                    <BakcImage dog={dog} />
                   }
                 >
                   <Card.Meta

@@ -35,6 +35,7 @@ const createRequest = (url) => ({ url });
 
 export const etherscanApi = createApi({
   reducerPath: "etherscan",
+  keepUnusedDataFor: 60 * 60,
   baseQuery: fetchBaseQuery({ baseUrl }),
   endpoints: (builder) => ({
     getApecoinApe: builder.query({
@@ -46,31 +47,31 @@ export const etherscanApi = createApi({
     getDogApe: builder.query({
       query: () =>
         createRequest(
-          `?module=logs&action=getLogs&address=${dogDeployer}&fromBlock=00000000&toBlock=99999999&topic0=${dogLog0}&topic1=${dogLog1}&page=1&offset=10000&chainid=1&apikey=${api}`
+          `?module=logs&action=getLogs&address=${dogDeployer}&fromBlock=00000000&toBlock=99999999&topic0=${dogLog0}&topic0_1_opr=and&topic1=${dogLog1}&page=1&offset=10000&chainid=1&apikey=${api}`
         ),
     }),
     getOthersideApe: builder.query({
       query: () =>
         createRequest(
-          `?module=logs&action=getLogs&address=${othersideDeployer}&fromBlock=14828755&toBlock=15356630&topic0=${othersideLog0}&topic1=${othersideLog1}&topic2=${yugaLabsAddress}&page=1&offset=10000&chainid=1&apikey=${api}`
+          `?module=logs&action=getLogs&address=${othersideDeployer}&fromBlock=14828755&toBlock=15356630&topic0=${othersideLog0}&topic0_1_opr=and&topic1=${othersideLog1}&topic1_2_opr=and&topic2=${yugaLabsAddress}&page=1&offset=10000&chainid=1&apikey=${api}`
         ),
     }),
     getSewerApe: builder.query({
       query: () =>
         createRequest(
-          `?module=logs&action=getLogs&address=${sewerDeployer}&fromBlock=00000000&toBlock=99999999&topic0=${sewerLog0}&topic2=0x0000000000000000000000000000000000000000000000000000000000000003&page=1&offset=10000&chainid=1&apikey=${api}`
+          `?module=logs&action=getLogs&address=${sewerDeployer}&fromBlock=00000000&toBlock=99999999&topic0=${sewerLog0}&topic0_2_opr=and&topic2=0x0000000000000000000000000000000000000000000000000000000000000003&page=1&offset=10000&chainid=1&apikey=${api}`
         ),
     }),
     getSewerApeBakc: builder.query({
       query: () =>
         createRequest(
-          `?module=logs&action=getLogs&address=${sewerDeployer}&fromBlock=00000000&toBlock=99999999&topic0=${sewerLog0}&topic2=0x0000000000000000000000000000000000000000000000000000000000000004&page=1&offset=10000&chainid=1&apikey=${api}`
+          `?module=logs&action=getLogs&address=${sewerDeployer}&fromBlock=00000000&toBlock=99999999&topic0=${sewerLog0}&topic0_2_opr=and&topic2=0x0000000000000000000000000000000000000000000000000000000000000004&page=1&offset=10000&chainid=1&apikey=${api}`
         ),
     }),
     getSewerMutantBakc: builder.query({
       query: () =>
         createRequest(
-          `?module=logs&action=getLogs&address=${sewerDeployer}&fromBlock=00000000&toBlock=99999999&topic0=${sewerLog0}&topic2=0x0000000000000000000000000000000000000000000000000000000000000002&page=1&offset=10000&chainid=1&apikey=${api}`
+          `?module=logs&action=getLogs&address=${sewerDeployer}&fromBlock=00000000&toBlock=99999999&topic0=${sewerLog0}&topic0_2_opr=and&topic2=0x0000000000000000000000000000000000000000000000000000000000000002&page=1&offset=10000&chainid=1&apikey=${api}`
         ),
     }),
   }),

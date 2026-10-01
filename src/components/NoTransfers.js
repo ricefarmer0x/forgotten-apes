@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Layout } from "antd";
 import {
-  useGetPastHoldersQuery,
-  useGetCurrentHoldersQuery,
+  useGetOwnersForContractAtBlockQuery,
+  useGetOwnersForContractQuery,
 } from "../services/alchemyApi";
 import { useIdFilter, getRandomApes } from "../functions/functions";
 import {
@@ -13,14 +13,8 @@ import {
   Loader,
   ErrorMsg,
 } from "./subcomponents/subcomponents";
-import { createAlchemyWeb3 } from "@alch/alchemy-web3";
-
 import { setNoTransfersCount } from "../store/store";
 import { useDispatch, useSelector } from "react-redux";
-
-const web3 = new createAlchemyWeb3(
-  `https://eth-mainnet.g.alchemy.com/v2/${process.env.REACT_APP_ALCHEMY_API_KEY}`
-);
 
 const { Content } = Layout;
 
@@ -35,35 +29,27 @@ const NoTransfers = () => {
   const lastApeBlock = 12347249;
   const noTransfersCount = useSelector((state) => state.noTransfersCountSlice);
 
-  const { data: current, error: currentError } = useGetCurrentHoldersQuery();
-  const { data: past, error: pastError } = useGetPastHoldersQuery(lastApeBlock);
+  const { data: current, error: currentError } = useGetOwnersForContractQuery();
+  const { data: past, error: pastError } =
+    useGetOwnersForContractAtBlockQuery(lastApeBlock);
 
   useEffect(() => {
     if (current && past) {
-      // Find all ape wallets at the end of the BAYC mint
-      let pastArray = [];
-      const pastOwner = past?.ownerAddresses?.map(
-        ({ ownerAddress, tokenBalances }) =>
-          tokenBalances.map(({ tokenId }) =>
-            pastArray.push(ownerAddress + tokenId)
-          )
+      const ownerTokenKey = (ownerAddress, tokenId) =>
+        `${ownerAddress.toLowerCase()}:${tokenId}`;
+      const pastTokens = new Set(
+        past.owners.flatMap(({ ownerAddress, tokenBalances = [] }) =>
+          tokenBalances.map(({ tokenId }) => ownerTokenKey(ownerAddress, tokenId))
+        )
       );
-      // Find current ape wallets
-      let currentArray = [];
-      const currentOwner = current?.ownerAddresses?.map(
-        ({ ownerAddress, tokenBalances }) =>
-          tokenBalances.map(({ tokenId }) =>
-            currentArray.push(ownerAddress + tokenId)
-          )
-      );
-      // Match current and past ape wallets to see if they are the same
-      const matchingArray = currentArray.filter((value) =>
-        pastArray.includes(value)
+      const matchingArray = current.owners.flatMap(
+        ({ ownerAddress, tokenBalances = [] }) =>
+          tokenBalances
+            .filter(({ tokenId }) => pastTokens.has(ownerTokenKey(ownerAddress, tokenId)))
+            .map(({ tokenId }) => tokenId)
       );
       // If wallets match, then ape is still owned by original minter
-      const apeNumbers = matchingArray.map((array) =>
-        web3.utils.hexToNumber(array.substring(42))
-      );
+      const apeNumbers = matchingArray.map((tokenId) => Number(tokenId));
       setFilteredApes(apeNumbers);
       setUntransferredApes(getRandomApes(apeNumbers));
       if (noTransfersCount === 0) {

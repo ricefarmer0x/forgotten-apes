@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 const alchemyApiKey = `${process.env.REACT_APP_ALCHEMY_API_KEY}`;
-const baseUrl = `https://eth-mainnet.g.alchemy.com/nft/v2/${alchemyApiKey}/`;
+const baseUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${alchemyApiKey}/`;
 const baycAddress = "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d";
 // const burnAddress = "0x000000000000000000000000000000000000dead";
 // const burnAddress1 = "0x0000000000000000000000000000000000000000";
@@ -12,39 +12,40 @@ const createRequest = (url) => ({ url });
 
 export const alchemyApi = createApi({
   reducerPath: "alchemy",
+  keepUnusedDataFor: 15 * 60,
   baseQuery: fetchBaseQuery({ baseUrl }),
   endpoints: (builder) => ({
-    getNfts: builder.query({
+    getNftsForOwner: builder.query({
       query: (owner) =>
         createRequest(
-          `getNFTs?owner=${owner}&pageSize=100&contractAddresses[]=${baycAddress}&withMetadata=false`
+          `getNFTsForOwner?owner=${owner}&pageSize=100&contractAddresses[]=${baycAddress}&withMetadata=false`
         ),
     }),
-    getCurrentHolders: builder.query({
+    getOwnersForContract: builder.query({
       query: () =>
         createRequest(
-          `getOwnersForCollection?contractAddress=${baycAddress}&withTokenBalances=true`
+          `getOwnersForContract?contractAddress=${baycAddress}&withTokenBalances=true`
         ),
     }),
-    getPastHolders: builder.query({
+    getOwnersForContractAtBlock: builder.query({
       query: (block) =>
         createRequest(
-          `getOwnersForCollection?contractAddress=${baycAddress}&withTokenBalances=true&block=${block}`
+          `getOwnersForContract?contractAddress=${baycAddress}&withTokenBalances=true&block=${block}`
         ),
     }),
-    getTokenHolders: builder.query({
+    getOwnersForNft: builder.query({
       query: (token) =>
         createRequest(
-          `getOwnersForToken?contractAddress=${baycAddress}&tokenId=${token}`
+          `getOwnersForNFT?contractAddress=${baycAddress}&tokenId=${token}`
         ),
     }),
-    getMetadata: builder.query({
+    getNftMetadata: builder.query({
       query: (tokenId) =>
         createRequest(
           `getNFTMetadata?contractAddress=${baycAddress}&tokenId=${tokenId}&tokenType=ERC721&refreshCache=false`
         ),
     }),
-    getBakc: builder.query({
+    getBakcNftMetadata: builder.query({
       query: (tokenId) =>
         createRequest(
           `getNFTMetadata?contractAddress=${bakcAddress}&tokenId=${tokenId}&refreshCache=false`
@@ -54,10 +55,10 @@ export const alchemyApi = createApi({
 });
 
 export const {
-  useGetNftsQuery,
-  useGetCurrentHoldersQuery,
-  useGetPastHoldersQuery,
-  useGetTokenHoldersQuery,
-  useGetMetadataQuery,
-  useGetBakcQuery,
+  useGetNftsForOwnerQuery,
+  useGetOwnersForContractQuery,
+  useGetOwnersForContractAtBlockQuery,
+  useGetOwnersForNftQuery,
+  useGetNftMetadataQuery,
+  useGetBakcNftMetadataQuery,
 } = alchemyApi;

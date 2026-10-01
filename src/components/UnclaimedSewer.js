@@ -43,7 +43,7 @@ const UnclaimedSewer = () => {
 
   useEffect(() => {
     if (claimedSewerApes && claimedSewerApesBakc) {
-      setAllClaimed([...claimedSewerApes, ...claimedSewerApesBakc]);
+      setAllClaimed([...new Set([...claimedSewerApes, ...claimedSewerApesBakc])]);
     }
   }, [claimedSewerApes, claimedSewerApesBakc]);
 

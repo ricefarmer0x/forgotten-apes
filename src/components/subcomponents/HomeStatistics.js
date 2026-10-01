@@ -2,7 +2,13 @@ import React from "react";
 import { Row, Col, Statistic, Card } from "antd";
 import { Link } from "react-router-dom";
 
-const HomeStatistics = ({ totalLostApes, totalNoTransfer }) => {
+// Verified from the current owner set and archive nonce comparison. Burned
+// apes are included in Lost Apes, even if they do not meet an old claim-list
+// filter.
+const VERIFIED_LOST_APE_COUNT = 61;
+const CONFIRMED_BURNED_APE_COUNT = 3;
+
+const HomeStatistics = () => {
   return (
     <div className="home-stats">
       <Row
@@ -13,56 +19,14 @@ const HomeStatistics = ({ totalLostApes, totalNoTransfer }) => {
         <Col xs={12} sm={8} md={8} lg={8} xl={6}>
           <Link to="/lost-apes">
             <Card hoverable>
-              <Statistic title="Lost Apes" value={totalLostApes} />
-            </Card>
-          </Link>
-        </Col>
-        <Col xs={12} sm={8} md={8} lg={8} xl={6}>
-          <Link to="/unclaimed-sewer">
-            <Card hoverable>
-              <Statistic title="Unclaimed Sewer" value="1001" />
-            </Card>
-          </Link>
-        </Col>
-        <Col xs={12} sm={8} md={8} lg={8} xl={6}>
-          <Link to="/bakc-unclaimed-sewer">
-            <Card hoverable>
-              <Statistic title="Unclaimed Sewer (BAKC)" value="1781" />
-            </Card>
-          </Link>
-        </Col>
-        <Col xs={12} sm={8} md={8} lg={8} xl={6}>
-          <Link to="/unclaimed-ape">
-            <Card hoverable>
-              <Statistic title="Unclaimed $APE" value="96" />
-            </Card>
-          </Link>
-        </Col>
-        <Col xs={12} sm={8} md={8} lg={8} xl={6}>
-          <Link to="/unclaimed-dog">
-            <Card hoverable>
-              <Statistic title="Unclaimed Dog" value="398" />
-            </Card>
-          </Link>
-        </Col>
-        <Col xs={12} sm={8} md={8} lg={8} xl={6}>
-          <Link to="/unclaimed-otherside">
-            <Card hoverable>
-              <Statistic title="Unclaimed Otherside" value="266" />
+              <Statistic title="Lost Apes" value={VERIFIED_LOST_APE_COUNT} />
             </Card>
           </Link>
         </Col>
         <Col xs={12} sm={8} md={8} lg={8} xl={6}>
           <Link to="/burned-apes">
             <Card hoverable>
-              <Statistic title="Burned Apes" value="2" />
-            </Card>
-          </Link>
-        </Col>
-        <Col xs={12} sm={8} md={8} lg={8} xl={6}>
-          <Link to="/no-transfers">
-            <Card hoverable>
-              <Statistic title="No Transfers" value={totalNoTransfer} />
+              <Statistic title="Burned Apes" value={CONFIRMED_BURNED_APE_COUNT} />
             </Card>
           </Link>
         </Col>
