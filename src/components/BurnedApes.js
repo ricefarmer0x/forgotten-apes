@@ -77,7 +77,7 @@ const BurnedApes = () => {
           <SearchMain setSearchTerm={setSearchTerm} />
 
           <SortMain setUnclaimed={setBurnedApes} unclaimed={burnedApes} />
-          <ApesMain unclaimed={burnedApes} />
+          <ApesMain unclaimed={burnedApes} showAllViews />
         </>
       )}
     </Content>

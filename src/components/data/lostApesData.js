@@ -566,6 +566,9 @@ export const unclaimedApecoinApes = [
 ];
 
 // Local Lost Ape snapshot, last refreshed on October 1, 2026.
+export const confirmedBurnedApeIds = [
+  4885, 5085, 8860,
+];
 export const lostApesSnapshotUpdatedAt = "October 1, 2026";
 export const lostApesSnapshot = [
   168, 674, 675, 677, 678, 679, 680, 681, 683, 697, 698, 699, 700, 2080, 2179, 2326,

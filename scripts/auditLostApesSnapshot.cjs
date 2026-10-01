@@ -8,7 +8,6 @@ const DATA_PATH = path.resolve(__dirname, "../src/components/data/lostApesData.j
 const CHECKPOINT_PATH = path.join("/tmp", "forgotten-apes-lost-apes-audit.json");
 const BAYC_CONTRACT = "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d";
 const OTHERSIDE_MINT_BLOCK = 14680891;
-const CONFIRMED_BURNED_APE_IDS = [4885, 5085, 8860];
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const DEAD_ADDRESS = "0x000000000000000000000000000000000000dead";
 const web3 = new Web3();
@@ -154,7 +153,7 @@ async function main() {
   const candidateIds = [...new Set(apeCoin.filter((id) => otherside.has(id) && sewer.has(id)))].sort((a, b) => a - b);
   if (!candidateIds.length) throw new Error("No Lost Ape claim candidates were derived");
 
-  const burnedApeIds = [...CONFIRMED_BURNED_APE_IDS];
+  const burnedApeIds = readDataExport("confirmedBurnedApeIds").sort((a, b) => a - b);
 
   const checkpoint = fs.existsSync(CHECKPOINT_PATH)
     ? JSON.parse(fs.readFileSync(CHECKPOINT_PATH, "utf8"))

@@ -85,7 +85,7 @@ const NoTransfers = () => {
             setUnclaimed={setUntransferredApes}
             unclaimed={untransferredApes}
           />
-          <ApesMain unclaimed={untransferredApes} />
+          <ApesMain unclaimed={untransferredApes} showAllViews />
         </>
       )}
     </Content>

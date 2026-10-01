@@ -7,7 +7,7 @@ import BaycImage from "./BaycImage";
 const PAGE_SIZE = 24;
 
 const ApesMain = (props) => {
-  const { unclaimed, loading, showAllViews = true } = props;
+  const { unclaimed, loading, showAllViews = false } = props;
   const [view, setView] = useState("cards");
   const [page, setPage] = useState(1);
   const [downloading, setDownloading] = useState(false);

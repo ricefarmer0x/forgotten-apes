@@ -6,13 +6,9 @@ import {
   unclaimedDogTokenIds,
   unclaimedOthersideApes,
   unclaimedSewerApes,
+  confirmedBurnedApeIds,
+  lostApesSnapshot,
 } from "../data/lostApesData";
-
-// Verified from the current owner set and archive nonce comparison. Burned
-// apes are included in Lost Apes, even if they do not meet an old claim-list
-// filter.
-const VERIFIED_LOST_APE_COUNT = 61;
-const CONFIRMED_BURNED_APE_COUNT = 3;
 
 const HomeStatistics = () => {
   return (
@@ -25,14 +21,14 @@ const HomeStatistics = () => {
         <Col xs={12} sm={8} md={8} lg={8} xl={6}>
           <Link to="/lost-apes">
             <Card hoverable>
-              <Statistic title="Lost Apes" value={VERIFIED_LOST_APE_COUNT} />
+              <Statistic title="Lost Apes" value={lostApesSnapshot.length} />
             </Card>
           </Link>
         </Col>
         <Col xs={12} sm={8} md={8} lg={8} xl={6}>
           <Link to="/burned-apes">
             <Card hoverable>
-              <Statistic title="Burned Apes" value={CONFIRMED_BURNED_APE_COUNT} />
+              <Statistic title="Burned Apes" value={confirmedBurnedApeIds.length} />
             </Card>
           </Link>
         </Col>

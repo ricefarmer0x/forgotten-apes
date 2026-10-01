@@ -40,7 +40,7 @@ const LostApes = () => {
       </TitleMain>
       <SearchMain setSearchTerm={setSearchTerm} />
       <SortMain setUnclaimed={setLostApes} unclaimed={lostApes} />
-      <ApesMain unclaimed={lostApes} />
+      <ApesMain unclaimed={lostApes} showAllViews />
     </Content>
   );
 };
