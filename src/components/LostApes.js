@@ -2,12 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Layout } from "antd";
 import { useGetOwnersForContractQuery } from "../services/alchemyApi";
 import {
-  useGetApecoinApeQuery,
-  useGetOthersideApeQuery,
-} from "../services/etherscanApi";
-import {
-  useSetClaimed,
-  useSetUnclaimed,
   useIdFilter,
   getRandomApes,
 } from "../functions/functions";

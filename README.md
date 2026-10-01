@@ -75,6 +75,34 @@ three confirmed burned BAYC tokens are **#4885, #5085, and #8860**. Tokens
 #4885 and #8860 are already in the 60; adding #5085 produces the 61-token
 Lost Apes total.
 
+### ApeCoin claim audit
+
+The complete `AlphaClaimed` event history contains **9,904 unique BAYC token
+IDs**, leaving **96 apes that did not claim ApeCoin**. The audit traverses all
+199 pages of the event source and deduplicates token IDs; it does not rely on a
+single explorer response, which may cap results at 1,000 events. Re-run it with
+`node scripts/auditApecoinClaims.cjs` when refreshing this data.
+
+### Refreshing the remaining claim datasets
+
+The claim pages use local arrays rather than browser-time explorer requests.
+Run these scripts locally to refresh an array, print the complete result, and
+write the updated IDs back into `src/components/data/lostApesData.js`:
+
+```sh
+node scripts/auditUnclaimedBakcDogs.cjs
+node scripts/auditUnclaimedOtherside.cjs
+node scripts/auditUnclaimedSewerPasses.cjs
+```
+
+The scripts require either `ETH_RPC_URL` or an exported
+`REACT_APP_ALCHEMY_API_KEY`; they never read `.env`. BAKC and Sewer use 100
+batched contract-state requests each. Otherside uses 27 batches of narrowly
+filtered mint logs. Each refresh is resumable after `Ctrl-C`; rerun the same
+command to continue, or add `--reset` to discard its temporary checkpoint.
+Review the terminal count and the resulting diff before committing the
+refreshed dataset.
+
 ### Supplemental labels
 
 These labels provide useful context but do **not** change the Lost Apes count

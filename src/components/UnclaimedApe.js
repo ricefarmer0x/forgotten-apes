@@ -1,59 +1,33 @@
 import React, { useState } from "react";
 import { Layout } from "antd";
-import { useGetApecoinApeQuery } from "../services/etherscanApi";
-import {
-  useSetClaimed,
-  useSetUnclaimed,
-  useIdFilter,
-} from "../functions/functions";
+import { useIdFilter } from "../functions/functions";
+import { unclaimedApecoinApes } from "./data/lostApesData";
 import {
   TitleMain,
   ApesMain,
   SearchMain,
   SortMain,
-  Loader,
-  ErrorMsg,
 } from "./subcomponents/subcomponents";
 
 const { Content } = Layout;
 
 const UnclaimedApe = () => {
-  const [loading, setLoading] = useState(true);
-  const [claimedApes, setClaimedApes] = useState();
-  const [unclaimedApes, setUnclaimedApes] = useState();
+  const [unclaimedApes, setUnclaimedApes] = useState(unclaimedApecoinApes);
 
   const [searchTerm, setSearchTerm] = useState();
 
-  const { data, error } = useGetApecoinApeQuery();
-
-  // Total unclaimed apes
-  const totalApes = 10000 - claimedApes?.length;
-
-  //  Set Claimed Apes
-  useSetClaimed(data, 1, setClaimedApes);
-
-  // Set Unclaimed Apes
-  useSetUnclaimed(claimedApes, setUnclaimedApes, setLoading);
-
-  // Filter apes by ID
-  useIdFilter(claimedApes, setUnclaimedApes, searchTerm);
-
-  if (error) return <ErrorMsg />;
+  // The full AlphaClaimed event audit found 9,904 claimed BAYC tokens and
+  // these 96 unclaimed IDs. Do not replace this with a capped log response.
+  useIdFilter(unclaimedApecoinApes, setUnclaimedApes, searchTerm, true);
 
   return (
     <Content>
-      {loading ? (
-        <Loader />
-      ) : (
-        <>
-          <TitleMain number={totalApes}>
-            {totalApes} apes never claimed their Apecoin airdrop.
-          </TitleMain>
-          <SearchMain setSearchTerm={setSearchTerm} />
-          <SortMain setUnclaimed={setUnclaimedApes} unclaimed={unclaimedApes} />
-          <ApesMain unclaimed={unclaimedApes}></ApesMain>
-        </>
-      )}
+      <TitleMain number={unclaimedApecoinApes.length}>
+        {unclaimedApecoinApes.length} apes never claimed their Apecoin airdrop.
+      </TitleMain>
+      <SearchMain setSearchTerm={setSearchTerm} />
+      <SortMain setUnclaimed={setUnclaimedApes} unclaimed={unclaimedApes} />
+      <ApesMain unclaimed={unclaimedApes}></ApesMain>
     </Content>
   );
 };

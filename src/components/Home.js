@@ -14,15 +14,12 @@ import {
   useGetOwnersForContractQuery,
   useGetOwnersForContractAtBlockQuery,
 } from "../services/alchemyApi";
-import {
-  useGetApecoinApeQuery,
-  useGetOthersideApeQuery,
-} from "../services/etherscanApi";
+import { useGetOthersideApeQuery } from "../services/etherscanApi";
 import {
   useSetClaimed,
-  useSetUnclaimed,
   getRandomApes,
 } from "../functions/functions";
+import { unclaimedApecoinApes } from "./data/lostApesData";
 
 import { setLostApesCount, setNoTransfersCount } from "../store/store";
 import { useDispatch, useSelector } from "react-redux";
@@ -37,9 +34,6 @@ const Home = (props) => {
   const [homeApes, setHomeApes] = useState([]);
 
   const [loading, setLoading] = useState(true);
-
-  const [claimedApes, setClaimedApes] = useState();
-  const [unclaimedApes, setUnclaimedApes] = useState();
 
   const [yugaClaimedOtherside, setYugaClaimedOtherside] = useState();
   const [unclaimedOtherside, setUnclaimedOtherside] = useState();
@@ -85,12 +79,7 @@ const Home = (props) => {
   }, [current, past]);
 
   // Find Lost Apes Count
-  const { data: apecoin, error: apecoinError } = useGetApecoinApeQuery();
   const { data: otherside, error: othersideError } = useGetOthersideApeQuery();
-  //  Set Claimed apecoin Apes
-  useSetClaimed(apecoin, 1, setClaimedApes);
-  // Set Unclaimed apecoin Apes
-  useSetUnclaimed(claimedApes, setUnclaimedApes);
 
   //   Set Yuga Otherside claims
   useSetClaimed(otherside, 3, setYugaClaimedOtherside);
@@ -106,15 +95,15 @@ const Home = (props) => {
 
   //   Filter apes with unclaimed $ape and unclaimed otherside
   useEffect(() => {
-    if (unclaimedApes && unclaimedOtherside) {
-      let matchingData = unclaimedApes.filter((element) =>
+    if (unclaimedOtherside) {
+      let matchingData = unclaimedApecoinApes.filter((element) =>
         unclaimedOtherside.includes(element)
       );
       // Sort matching apes low to high
       matchingData?.sort((a, b) => a - b);
       setMatchingApes(matchingData);
     }
-  }, [unclaimedApes, unclaimedOtherside]);
+  }, [unclaimedOtherside]);
   // Fetch current Ape holders
   const { data: currentHolders, error: currentError } =
     useGetOwnersForContractQuery();
@@ -206,7 +195,6 @@ const Home = (props) => {
 
   const hasDataError =
     currentError ||
-    apecoinError ||
     othersideError ||
     currentsError ||
     pastError;
